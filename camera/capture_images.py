@@ -126,8 +126,8 @@ def main():
     for image in motion_images:
         buff = io.BytesIO()
         faces = get_faces(faceCascade, image)
-        for (x, y, w, h) in faces:
-            cv2.rectangle(image, (x, y), (x+w, y+h), (0, 255, 0), 2)
+#        for (x, y, w, h) in faces:
+#            cv2.rectangle(image, (x, y), (x+w, y+h), (0, 255, 0), 2)
 
         if len(faces):
             filename = ('{}.jpg'
