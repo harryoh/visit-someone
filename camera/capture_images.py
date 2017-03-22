@@ -46,7 +46,7 @@ def initial_camera(width, height):
 
 
 def initial_s3():
-    s3 = boto3.client('s3')
+    s3 = boto3.client('s3', AWS_REGION)
     bucket = None
     try:
         bucket = s3.create_bucket(
@@ -54,7 +54,8 @@ def initial_s3():
             CreateBucketConfiguration={
                 'LocationConstraint': AWS_REGION
             })
-    except ClientError:
+    except ClientError as e:
+        print str(e)
         pass
 
     if bucket:
