@@ -28,6 +28,7 @@ AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID', CONFIG.AWS_ACCESS_KEY_ID)
 AWS_ACCESS_KEY_SECRET = os.getenv('AWS_ACCESS_KEY_SECRET', CONFIG.AWS_ACCESS_KEY_SECRET)
 AWS_BUCKET_NAME = os.getenv('AWS_BUCKET_NAME', CONFIG.AWS_BUCKET_NAME)
 AWS_REGION = os.getenv('AWS_REGION', CONFIG.AWS_REGION)
+DISPLAY = os.getenv('DISPLAY', CONFIG.DISPLAY)
 
 
 def initial_camera(width, height):
@@ -133,16 +134,20 @@ def main():
             filename = ('{}.jpg'
                         .format(datetime.now().strftime("%Y%m%d_%H%M%S")))
             Image.fromarray(image).save(buff, format='JPEG')
+            print 'Find face({})'.format(len(faces))
             s3.put_object(
                 Bucket=AWS_BUCKET_NAME,
                 Key=filename,
                 ContentType='image/jpeg',
                 Body=buff.getvalue())
-            cv2.imshow('viewer', image)
-            cv2.waitKey(1)
+
+            if DISPLAY is True:
+                cv2.imshow('viewer', image)
+                cv2.waitKey(1)
 
     cam.release()
-    cv2.destoryAllWindows()
+    if DISPLAY is True:
+        cv2.destoryAllWindows()
 
 if __name__ == "__main__":
     main()
