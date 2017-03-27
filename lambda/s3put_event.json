@@ -15,8 +15,8 @@
           "size": 84278
         },
         "bucket": {
-          "arn": "arn:aws:s3:::visit.someone.1",
-          "name": "visit.someone.1",
+          "arn": "arn:aws:s3:::visit.someone",
+          "name": "visit.someone",
           "ownerIdentity": {
             "principalId": "EXAMPLE"
           }
