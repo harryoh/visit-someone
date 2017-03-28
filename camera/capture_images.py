@@ -134,7 +134,9 @@ def main():
             filename = ('{}.jpg'
                         .format(datetime.now().strftime("%Y%m%d_%H%M%S")))
             Image.fromarray(image).save(buff, format='JPEG')
+
             print 'Find face({})'.format(len(faces))
+
             s3.put_object(
                 Bucket=AWS_BUCKET_NAME,
                 Key=filename,
