@@ -1,0 +1,54 @@
+{
+    "version":"0",
+    "id":"4afaa0d9-8032-4e76-bdd6-e7d7ef2e6898",
+    "detail-type":"AWS API Call via CloudTrail",
+    "source":"aws.s3",
+    "account":"550931752661",
+    "time":"2017-04-03T13:28:41Z",
+    "region":"us-west-2",
+    "resources":[
+
+    ],
+    "detail":{
+        "eventVersion":"1.05",
+        "userIdentity":{
+            "type":"Root",
+            "principalId":"550931752661",
+            "arn":"arn:aws:iam::550931752661:root",
+            "accountId":"550931752661",
+            "accessKeyId":"AKIAJU2CPEZ6UCROQYAA"
+        },
+        "eventTime":"2017-04-03T13:28:41Z",
+        "eventSource":"s3.amazonaws.com",
+        "eventName":"PutObject",
+        "awsRegion":"us-west-2",
+        "sourceIPAddress":"218.39.65.100",
+        "userAgent":"[Boto3/1.4.4 Python/2.7.12 Darwin/16.5.0 Botocore/1.5.12]",
+        "requestParameters":{
+            "bucketName":"visit.someone",
+            "key":"test.jpg"
+        },
+        "responseElements":{
+            "x-amz-expiration":"expiry-date=\"Wed, 05 Apr 2017 00:00:00 GMT\", rule-id=\"MTg1MjU2YTktYTIzOC00NjkyLTlkMWItYWVjMzYxNzY3NTE0\""
+        },
+        "additionalEventData":{
+            "x-amz-id-2":"03yyq14v92iM11Rs5KQhGjqNEWOfatBPkw/eykoZwtRBFa6H0lbm0q+EacVEAWLIFRcTXsxL31E="
+        },
+        "requestID":"7409E93EA244D867",
+        "eventID":"9b079fa1-7531-457e-9468-a9338d32434f",
+        "readOnly":false,
+        "resources":[
+            {
+                "type":"AWS::S3::Object",
+                "ARN":"arn:aws:s3:::visit.someone/test.jpg"
+            },
+            {
+                "accountId":"550931752661",
+                "type":"AWS::S3::Bucket",
+                "ARN":"arn:aws:s3:::visit.someone"
+            }
+        ],
+        "eventType":"AwsApiCall",
+        "recipientAccountId":"550931752661"
+    }
+}

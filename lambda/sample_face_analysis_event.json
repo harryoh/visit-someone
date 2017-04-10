@@ -4,7 +4,7 @@
         "bucket":"visit.someone",
         "name":"test.jpg"
     },
-    "created_at":"2017-03-28 22:48:21.784109",
+    "created_at":"2017-03-28 22:48:21.784",
     "faces":[
         {
             "Confidence":99.97056579589844,

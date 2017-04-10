@@ -13,6 +13,8 @@ import cv2
 import boto3
 from botocore.exceptions import ClientError
 
+IMG_WIDTH=640
+IMG_HEIGHT=480
 
 try:
     CONFIG = import_module('config')
@@ -47,7 +49,10 @@ def initial_camera(width, height):
 
 
 def initial_s3():
-    s3 = boto3.client('s3', AWS_REGION)
+    s3 = boto3.client('s3',
+                      AWS_REGION,
+                      aws_access_key_id=AWS_ACCESS_KEY_ID,
+                      aws_secret_access_key=AWS_ACCESS_KEY_SECRET)
     bucket = None
     try:
         bucket = s3.create_bucket(
@@ -114,7 +119,7 @@ def get_faces(faceCascade, image):
 
 
 def main():
-    cam = initial_camera(640, 480)
+    cam = initial_camera(IMG_WIDTH, IMG_HEIGHT)
     s3 = initial_s3()
     faceCascade = cv2.CascadeClassifier('haarcascade_frontalface.xml')
     cv_images = deque()
@@ -131,6 +136,28 @@ def main():
 #            cv2.rectangle(image, (x, y), (x+w, y+h), (0, 255, 0), 2)
 
         if len(faces):
+            filename = ('{}.jpg'
+                        .format(datetime.now().strftime("%Y%m%d_%H%M%S")))
+            file_path = os.path.join('/tmp', filename)
+            cv2.imwrite(file_path, image)
+
+            print 'Find face({})'.format(len(faces))
+
+            s3.upload_file(file_path, AWS_BUCKET_NAME, filename,
+                           ExtraArgs={
+                               'ContentType': 'image/jpeg',
+                               'Metadata': {
+                                   'x-amz-meta-width': str(IMG_WIDTH),
+                                   'x-amz-meta-height': str(IMG_HEIGHT)
+                               }
+                           })
+            os.unlink(file_path)
+
+            if DISPLAY is True:
+                cv2.imshow('viewer', image)
+                cv2.waitKey(1)
+
+        if False:
             filename = ('{}.jpg'
                         .format(datetime.now().strftime("%Y%m%d_%H%M%S")))
             Image.fromarray(image).save(buff, format='JPEG')

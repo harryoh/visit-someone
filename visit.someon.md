@@ -13,6 +13,7 @@ sudo apt-get install build-essential git cmake pkg-config libjpeg-dev libtiff5-d
 ```
 $ sudo apt-get install -y python2.7-dev
 $ pip install --upgrade pip
+$ pip install numpy
 ```
 
 ```
@@ -68,17 +69,22 @@ $ python
 
 ```
 $ aws iam create-role --role-name visit-someone-role \
---assume-role-policy-document '{
+    --assume-role-policy-document '{
     "Version": "2012-10-17",
     "Statement": [{
         "Effect": "Allow",
-        "Principal": { "Service": "lambda.amazonaws.com" },
+        "Principal": {
+            "Service": [
+                "lambda.amazonaws.com",
+                "states.us-west-2.amazonaws.com",
+                "events.amazonaws.com"
+            ]
+        },
         "Action": "sts:AssumeRole"
     }]
 }'
 
 # output
-
 {
     "Role": {
         "AssumeRolePolicyDocument": {
@@ -88,13 +94,17 @@ $ aws iam create-role --role-name visit-someone-role \
                     "Action": "sts:AssumeRole",
                     "Effect": "Allow",
                     "Principal": {
-                        "Service": "lambda.amazonaws.com"
+                        "Service": [
+                            "lambda.amazonaws.com",
+                            "states.us-west-2.amazonaws.com",
+                            "events.amazonaws.com"
+                        ]
                     }
                 }
             ]
         },
-        "RoleId": "AROAILLL665OMCWWVYXFA",
-        "CreateDate": "2017-03-21T14:13:06.616Z",
+        "RoleId": "AROAICMHVR5XIORT3EM66",
+        "CreateDate": "2017-03-30T13:52:09.397Z",
         "RoleName": "visit-someone-role",
         "Path": "/",
         "Arn": "arn:aws:iam::550931752661:role/visit-someone-role"
@@ -121,9 +131,41 @@ $ aws iam put-role-policy \
 ### Add Lambda Permission
 
 ```
-$ aws iam attach-role-policy \
---policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole \
---role-name visit-someone-role
+$ aws iam put-role-policy \
+--role-name visit-someone-role \
+--policy-name VisitSomeoneLambdaFullAccess \
+--policy-document '{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "lambda:*"
+            ],
+            "Resource": [
+                "*"
+            ]
+        }
+    ]
+}'
+```
+
+### Add Step Function Permission
+
+```
+$ aws iam put-role-policy \
+--role-name visit-someone-role \
+--policy-name VisitSomeoneStepFunctionFullAccess \
+--policy-document '{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+             "Action": [ "states:StartExecution" ],
+            "Resource": [ "arn:aws:states:*:*:stateMachine:*" ]
+        }
+     ]
+}'
 ```
 
 ### Add Rekognition Permission
@@ -134,7 +176,202 @@ $ aws iam attach-role-policy \
 --role-name visit-someone-role
 ```
 
+# Elastic Search
 
+### Create Domain
+
+```
+$ aws es create-elasticsearch-domain \
+    --domain-name visit-someone \
+    --elasticsearch-version 5.1 \
+    --elasticsearch-cluster-config InstanceType=t2.small.elasticsearch,InstanceCount=1 \
+    --ebs-options EBSEnabled=true,VolumeType=gp2,VolumeSize=10
+
+# output
+{
+    "DomainStatus": {
+        "ElasticsearchClusterConfig": {
+            "DedicatedMasterEnabled": false,
+            "InstanceCount": 1,
+            "ZoneAwarenessEnabled": false,
+            "InstanceType": "t2.small.elasticsearch"
+        },
+        "DomainId": "550931752661/visit-someone",
+        "Created": true,
+        "Deleted": false,
+        "EBSOptions": {
+            "VolumeSize": 10,
+            "VolumeType": "gp2",
+            "EBSEnabled": true
+        },
+        "Processing": true,
+        "DomainName": "visit-someone",
+        "SnapshotOptions": {
+            "AutomatedSnapshotStartHour": 0
+        },
+        "ElasticsearchVersion": "5.1",
+        "AccessPolicies": "",
+        "AdvancedOptions": {
+            "rest.action.multi.allow_explicit_index": "true"
+        },
+        "ARN": "arn:aws:es:us-west-2:550931752661:domain/visit-someone"
+    }
+}
+
+
+$ aws es update-elasticsearch-domain-config \
+    --domain-name visit-someone \
+    --access-policies '{
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": ["*"]
+            },
+            "Action": ["es:*"],
+            "Resource": "arn:aws:es:us-west-2:550931752661:domain/visit-someone/*"
+        }]
+    }'
+
+# output
+{
+    "DomainConfig": {
+        "ElasticsearchClusterConfig": {
+            "Status": {
+                "PendingDeletion": false,
+                "State": "Active",
+                "CreationDate": 1491650436.646,
+                "UpdateVersion": 6,
+                "UpdateDate": 1491650928.492
+            },
+            "Options": {
+                "DedicatedMasterEnabled": false,
+                "InstanceCount": 1,
+                "ZoneAwarenessEnabled": false,
+                "InstanceType": "t2.small.elasticsearch"
+            }
+        },
+        "ElasticsearchVersion": {
+            "Status": {
+                "PendingDeletion": false,
+                "State": "Active",
+                "CreationDate": 1491650436.646,
+                "UpdateVersion": 6,
+                "UpdateDate": 1491650928.492
+            },
+            "Options": "5.1"
+        },
+        "EBSOptions": {
+            "Status": {
+                "PendingDeletion": false,
+                "State": "Active",
+                "CreationDate": 1491650436.646,
+                "UpdateVersion": 6,
+                "UpdateDate": 1491650928.492
+            },
+            "Options": {
+                "VolumeSize": 10,
+                "VolumeType": "gp2",
+                "EBSEnabled": true
+            }
+        },
+        "SnapshotOptions": {
+            "Status": {
+                "PendingDeletion": false,
+                "State": "Active",
+                "CreationDate": 1491650436.646,
+                "UpdateVersion": 6,
+                "UpdateDate": 1491650928.492
+            },
+            "Options": {
+                "AutomatedSnapshotStartHour": 0
+            }
+        },
+        "AdvancedOptions": {
+            "Status": {
+                "PendingDeletion": false,
+                "State": "Active",
+                "CreationDate": 1491651611.845,
+                "UpdateVersion": 9,
+                "UpdateDate": 1491651611.845
+            },
+            "Options": {
+                "rest.action.multi.allow_explicit_index": "true"
+            }
+        },
+        "AccessPolicies": {
+            "Status": {
+                "PendingDeletion": false,
+                "State": "Processing",
+                "CreationDate": 1491651611.643,
+                "UpdateVersion": 9,
+                "UpdateDate": 1491651611.643
+            },
+            "Options": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":\"*\"},\"Action\":\"es:*\",\"Resource\":\"arn:aws:es:us-west-2:550931752661:domain/visit-someone/*\"}]}"
+        }
+    }
+}
+```
+
+### Get Endpoint
+
+```
+$ aws es describe-elasticsearch-domain \
+    --domain-name visit-someone \
+    --query 'DomainStatus.Endpoint'
+
+# output
+"search-visit-someone-it3nww4z465kzd73e6nhixvocy.us-west-2.es.amazonaws.com"
+```
+
+### Mapping Elasticsearch
+
+```
+$ curl -XPUT "https://search-visit-someone-it3nww4z465kzd73e6nhixvocy.us-west-2.es.amazonaws.com/aws-submit" -d'
+{
+    "settings": {
+        "number_of_shards": 1,
+        "number_of_replicas": 1
+    },
+    "mappings" : {
+        "faces" : {
+            "properties" : {
+                "Age": { "type": "integer"},
+                "BoundingBox": {
+                    "type" : "object",
+                    "properties": {
+                        "Height": { "type": "float" },
+                        "Left": { "type": "float" },
+                        "Right": { "type": "float" },
+                        "Width": { "type": "float" }
+                    }
+                },
+                "Emotions": {
+                    "properties": {
+                        "Confidence": { "type": "float" },
+                        "Type": { "type": "keyword" }
+                    }
+                },
+                "Eyeglasses": { "type": "boolean" },
+                "Gender": { "type": "keyword" },
+                "Smile": { "type": "float" },
+                "created_at" : {
+                       "type" : "date",
+                       "format": "yyyy-MM-dd HH:mm:ss.SSS"
+                },
+                "s3": {
+                    "type" : "object",
+                    "properties": {
+                        "bucket": { "type": "string" },
+                        "key": { "type": "string" },
+                        "region": { "type": "string" }
+                    }
+                }
+            }
+        }
+    }
+}'
+```
 
 # Lambda
 
@@ -146,7 +383,8 @@ $ aws iam attach-role-policy \
 $ pip install emulambda
 ```
 
-### lambda_face_analysis.py
+### [`lambda_face_analysis.py`](https://raw.githubusercontent.com/harryoh/visit-someone/master/lambda/lambda_visit_someone.py)
+
 
 ```
 from __future__ import print_function
@@ -191,50 +429,66 @@ def lambda_handler(event, context):
     }
 ```
 
-### s3put_event.json
+### `sample_clouewatch_event.json`
 
 ```
 {
-  "Records": [
-    {
-      "eventVersion": "2.0",
-      "eventTime": "1970-01-01T00:00:00.000Z",
-      "requestParameters": {
-        "sourceIPAddress": "127.0.0.1"
-      },
-      "s3": {
-        "configurationId": "testConfigRule",
-        "object": {
-          "eTag": "0123456789abcdef0123456789abcdef",
-          "sequencer": "0A1B2C3D4E5F678901",
-          "key": "test.jpg",
-          "size": 84278
+    "version":"0",
+    "id":"4afaa0d9-8032-4e76-bdd6-e7d7ef2e6898",
+    "detail-type":"AWS API Call via CloudTrail",
+    "source":"aws.s3",
+    "account":"550931752661",
+    "time":"2017-04-03T13:28:41Z",
+    "region":"us-west-2",
+    "resources":[
+
+    ],
+    "detail":{
+        "eventVersion":"1.05",
+        "userIdentity":{
+            "type":"Root",
+            "principalId":"550931752661",
+            "arn":"arn:aws:iam::550931752661:root",
+            "accountId":"550931752661",
+            "accessKeyId":"AKIAJU2CPEZ6UCROQYAA"
         },
-        "bucket": {
-          "arn": "arn:aws:s3:::funnyfaces",
-          "name": "funnyfaces",
-          "ownerIdentity": {
-            "principalId": "EXAMPLE"
-          }
+        "eventTime":"2017-04-03T13:28:41Z",
+        "eventSource":"s3.amazonaws.com",
+        "eventName":"PutObject",
+        "awsRegion":"us-west-2",
+        "sourceIPAddress":"218.39.65.100",
+        "userAgent":"[Boto3/1.4.4 Python/2.7.12 Darwin/16.5.0 Botocore/1.5.12]",
+        "requestParameters":{
+            "bucketName":"visit.someone",
+            "key":"test.jpg"
         },
-        "s3SchemaVersion": "1.0"
-      },
-      "responseElements": {
-        "x-amz-id-2": "EXAMPLE123/5678abcdefghijklambdaisawesome/mnopqrstuvwxyzABCDEFGH",
-        "x-amz-request-id": "EXAMPLE123456789"
-      },
-      "awsRegion": "ap-northeast-2",
-      "eventName": "ObjectCreated:Put",
-      "userIdentity": {
-        "principalId": "EXAMPLE"
-      },
-      "eventSource": "aws:s3"
+        "responseElements":{
+            "x-amz-expiration":"expiry-date=\"Wed, 05 Apr 2017 00:00:00 GMT\", rule-id=\"MTg1MjU2YTktYTIzOC00NjkyLTlkMWItYWVjMzYxNzY3NTE0\""
+        },
+        "additionalEventData":{
+            "x-amz-id-2":"03yyq14v92iM11Rs5KQhGjqNEWOfatBPkw/eykoZwtRBFa6H0lbm0q+EacVEAWLIFRcTXsxL31E="
+        },
+        "requestID":"7409E93EA244D867",
+        "eventID":"9b079fa1-7531-457e-9468-a9338d32434f",
+        "readOnly":false,
+        "resources":[
+            {
+                "type":"AWS::S3::Object",
+                "ARN":"arn:aws:s3:::visit.someone/test.jpg"
+            },
+            {
+                "accountId":"550931752661",
+                "type":"AWS::S3::Bucket",
+                "ARN":"arn:aws:s3:::visit.someone"
+            }
+        ],
+        "eventType":"AwsApiCall",
+        "recipientAccountId":"550931752661"
     }
-  ]
 }
 ```
 
-### lambda_normalize.py
+### [`lambda_normalize.py`](https://raw.githubusercontent.com/harryoh/visit-someone/master/lambda/lambda_normalize.py)
 
 ```
 from __future__ import print_function
@@ -273,7 +527,7 @@ def lambda_handler(event, context):
     }
 ```
 
-### face_analysis_event.json
+### `sample_face_analysis_event.json`
 
 ```
 {
@@ -483,20 +737,109 @@ def lambda_handler(event, context):
 }
 ```
 
+### [`lambda_post_elasticsearch.py`](https://raw.githubusercontent.com/harryoh/visit-someone/master/lambda/lambda_post_elasticsearch.py)
+
+```
+from __future__ import print_function
+
+import os
+import logging
+import requests
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+ES_ENDPOINT = os.getenv('ES_ENDPOINT')
+ES_INDEX = os.getenv('ES_INDEX', 'aws-submit')
+ES_TYPE = os.getenv('ES_TYPE', 'faces')
+
+
+def post_elasticsearch(data):
+    request_url = 'https://{}/{}/{}'.format(ES_ENDPOINT, ES_INDEX, ES_TYPE)
+    response = requests.post(request_url, json=data)
+    return any([response.status_code == 200, response.status_code == 201])
+
+
+def lambda_handler(event, context):
+    result = {
+        'total': len(event['faces']),
+        'success': 0,
+        'error': 0
+    }
+
+    for face in event['faces']:
+        face.update({
+            's3': event['s3'],
+            'created_at': event['created_at']
+        })
+
+        res = post_elasticsearch(face)
+        if not res:
+            result['error'] += 1
+        else:
+            result['success'] += 1
+
+    return result
+```
+
+### `sample_normalize.json`
+
+```
+{  
+    "s3":{  
+        "region":"us-west-2",
+        "bucket":"visit.someone",
+        "name":"test.jpg"
+    },
+    "created_at":"2017-03-28 22:48:21.784109",
+    "faces":[  
+        {  
+            "Eyeglasses":false,
+            "Gender":"Male",
+            "Age":34,
+            "Emotions":[  
+                {  
+                    "Confidence":24.25369644165039,
+                    "Type":"CALM"
+                },
+                {  
+                    "Confidence":10.527027130126953,
+                    "Type":"CONFUSED"
+                },
+                {  
+                    "Confidence":8.463282585144043,
+                    "Type":"HAPPY"
+                }
+            ],
+            "BoundingBox":{  
+                "Width":0.39423078298568726,
+                "Top":0.12980769574642181,
+                "Height":0.5256410241127014,
+                "Left":0.19591346383094788
+            },
+            "Smile":94.11669921875
+        }
+    ]
+}
+```
+
 ### Test
 
 ```
-$ emulambda -v lambda_face_analysis.lambda_handler s3put_event.json
+$ emulambda -v lambda_face_analysis.lambda_handler sample_cloudwatch_event.json
 
-$ emulambda -v lambda_normalize.lambda_handler face_analysis_event.json
+$ emulambda -v lambda_normalize.lambda_handler sample_face_analysis_event.json
+
+$ ES_ENDPOINT='search-visit-someone-it3nww4z465kzd73e6nhixvocy.us-west-2.es.amazonaws.com' emulambda -v lambda_post_elasticsearch.lambda_handler sample_normalize.json
 ```
 
 ### Packing
 
 ```
-$ rm -f face_analysis.zip normalize.zip
+$ rm -f face_analysis.zip normalize.zip post_elasticsearch.zip
 $ zip face_analysis.zip lambda_face_analysis.py
 $ zip normalize.zip lambda_normalize.py
+$ zip post_elasticsearch.zip lambda_post_elasticsearch.py
 ```
 
 ### Create Function
@@ -515,15 +858,15 @@ $ aws lambda create-function \
 
 # output
 {
-    "CodeSha256": "xpaU90w0zB4IIoZdH4JTW0hE6cw3JI5WyeeB8b/m7aE=",
+    "CodeSha256": "aJbGchlenI2IIHQ1V6ZUCPf223jMNLRhpFfEEBgyZS0=",
     "FunctionName": "GetFacesByReko",
-    "CodeSize": 824,
+    "CodeSize": 636,
     "MemorySize": 128,
     "FunctionArn": "arn:aws:lambda:us-west-2:550931752661:function:GetFacesByReko",
     "Version": "$LATEST",
     "Role": "arn:aws:iam::550931752661:role/visit-someone-role",
     "Timeout": 10,
-    "LastModified": "2017-03-28T14:01:56.187+0000",
+    "LastModified": "2017-03-30T12:19:28.523+0000",
     "Handler": "lambda_face_analysis.lambda_handler",
     "Runtime": "python2.7",
     "Description": "Get faces from a image on s3 using rekognition"
@@ -542,7 +885,7 @@ $ aws lambda create-function \
 
 #output
 {
-    "CodeSha256": "PgfVw7bgph8Ot2VDHExdG85NCGfeEP/YE1wdso84+i0=",
+    "CodeSha256": "MOfxtbSd6vE3lZjWKA7Si6Kh/R3GTDiCdwyNQUcGces=",
     "FunctionName": "NormalizeFaces",
     "CodeSize": 576,
     "MemorySize": 128,
@@ -550,13 +893,49 @@ $ aws lambda create-function \
     "Version": "$LATEST",
     "Role": "arn:aws:iam::550931752661:role/visit-someone-role",
     "Timeout": 10,
-    "LastModified": "2017-03-28T14:04:15.276+0000",
+    "LastModified": "2017-03-30T13:26:32.490+0000",
     "Handler": "lambda_normalize.lambda_handler",
     "Runtime": "python2.7",
     "Description": "Normalize anlysis of faces"
 }
-```
 
+$ aws lambda create-function \
+    --region us-west-2 \
+    --runtime python2.7 \
+    --role arn:aws:iam::550931752661:role/visit-someone-role \
+    --descript 'Insert faces to elasticsearch' \
+    --timeout 10 \
+    --memory-size 128 \
+    --handler lambda_post_elasticsearch.lambda_handler \
+    --zip-file fileb://post_elasticsearch.zip  \
+    --function-name PostElasticSearch \
+    --environment Variables='{
+        ES_ENDPOINT=search-visit-someone-it3nww4z465kzd73e6nhixvocy.us-west-2.es.amazonaws.com,
+        ES_INDEX=aws-submit,
+        ES_TYPE=faces
+    }'
+
+# output
+{
+    "CodeSha256": "DbxOVgxH4jJK0bJERCmdA6FVlEBf1xZw+F5vw8Q3hoA=",
+    "FunctionName": "PostElasticSearch",
+    "CodeSize": 663,
+    "MemorySize": 128,
+    "FunctionArn": "arn:aws:lambda:us-west-2:550931752661:function:PostElasticSearch",
+    "Environment": {
+        "Variables": {
+            "ES_ENDPOINT": "search-visit-someone-it3nww4z465kzd73e6nhixvocy.us-west-2.es.amazonaws.com"
+        }
+    },
+    "Version": "$LATEST",
+    "Role": "arn:aws:iam::550931752661:role/visit-someone-role",
+    "Timeout": 10,
+    "LastModified": "2017-04-08T12:19:46.519+0000",
+    "Handler": "lambda_post_elasticsearch.lambda_handler",
+    "Runtime": "python2.7",
+    "Description": "Insert faces to elasticsearch"
+}
+```
 
 ### Update Function
 
@@ -602,48 +981,187 @@ $ aws lambda update-function-code \
     "Runtime": "python2.7",
     "Description": "Normalize anlysis of faces"
 }
-```
 
-### Permission
-
-```
-$ aws lambda add-permission \
+$ aws lambda update-function-code \
     --region=us-west-2 \
-    --function-name GetFacesByReko \
-    --statement-id 1 \
-    --action "lambda:InvokeFunction" \
-    --principal s3.amazonaws.com \
-    --source-arn arn:aws:s3:::visit.someone
+    --function-name PostElasticSearch \
+    --zip-file fileb://post_elasticsearch.zip
 
 # output
 {
-    "Statement": "{\"Sid\":\"1\",\"Resource\":\"arn:aws:lambda:us-west-2:550931752661:function:GetFacesByReko\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"s3.amazonaws.com\"},\"Action\":[\"lambda:InvokeFunction\"],\"Condition\":{\"ArnLike\":{\"AWS:SourceArn\":\"arn:aws:s3:::visit.someone\"}}}"
+    "CodeSha256": "fUa1tB6TsUH1xsEsqcNJifd8zCN+ARCTmIy7dd63t1c=",
+    "FunctionName": "PostElasticSearch",
+    "CodeSize": 663,
+    "MemorySize": 128,
+    "FunctionArn": "arn:aws:lambda:us-west-2:550931752661:function:PostElasticSearch",
+    "Environment": {
+        "Variables": {
+            "ES_ENDPOINT": "search-visit-someone-it3nww4z465kzd73e6nhixvocy.us-west-2.es.amazonaws.com"
+        }
+    },
+    "Version": "$LATEST",
+    "Role": "arn:aws:iam::550931752661:role/visit-someone-role",
+    "Timeout": 10,
+    "LastModified": "2017-04-08T12:21:56.358+0000",
+    "Handler": "lambda_post_elasticsearch.lambda_handler",
+    "Runtime": "python2.7",
+    "Description": "Insert faces to elasticsearch"
 }
+```
 
-$ aws lambda add-permission \
-    --region=us-west-2 \
-    --function-name NormalizeFaces \
-    --statement-id 1 \
-    --action "lambda:InvokeFunction" \
-    --principal s3.amazonaws.com \
-    --source-arn arn:aws:s3:::visit.someone
+### Step Functions
+
+```
+$ aws stepfunctions create-state-machine \
+    --name visit-someone \
+    --role-arn arn:aws:iam::550931752661:role/visit-someone-role \
+    --definition '{
+    "Comment": "Analysis Faces",
+    "StartAt": "FaceAnalysis",
+    "States": {
+        "FaceAnalysis": {
+            "Type": "Task",
+            "Resource": "arn:aws:lambda:us-west-2:550931752661:function:GetFacesByReko",
+            "Next": "IsExistFaces"
+        },
+        "IsExistFaces": {
+            "Type": "Choice",
+            "Choices": [{
+                "Variable": "$.faces",
+                "BooleanEquals": false,
+                "Next": "NoFaces"
+            }],
+            "Default": "Normalize"
+        },
+        "Normalize": {
+            "Type": "Task",
+            "Resource": "arn:aws:lambda:us-west-2:550931752661:function:NormalizeFaces",
+            "Next": "PostElasticSearch"
+        },
+        "NoFaces": {
+            "Type": "Pass",
+            "End": true
+        },
+        "PostElasticSearch": {
+            "Type": "Task",
+            "Resource": "arn:aws:lambda:us-west-2:550931752661:function:PostElasticSearch",
+            "End": true
+        }
+    }
+}'
 
 #output
 {
-    "Statement": "{\"Sid\":\"1\",\"Resource\":\"arn:aws:lambda:us-west-2:550931752661:function:NormalizeFaces\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"s3.amazonaws.com\"},\"Action\":[\"lambda:InvokeFunction\"],\"Condition\":{\"ArnLike\":{\"AWS:SourceArn\":\"arn:aws:s3:::visit.someone\"}}}"
+    "creationDate": 1490880724.993,
+    "stateMachineArn": "arn:aws:states:us-west-2:550931752661:stateMachine:visit-someone"
 }
 ```
 
-### Triger Event
+```
+$ aws stepfunctions start-execution \
+    --state-machine-arn arn:aws:states:us-west-2:550931752661:stateMachine:visit-someone \
+    --input file://s3put_event.json
+
+#output
+{
+    "startDate": 1490712189.964,
+    "executionArn": "arn:aws:states:us-west-2:550931752661:execution:test:38a70381-0e74-4e49-92b0-7b1945eb0681"
+}
+```
+
+
+# S3 Event via cloudwatch
+
+### CloudTrail
 
 ```
-$ aws s3api put-bucket-notification-configuration \
---bucket visit.someone \
---notification-configuration '{
-    "LambdaFunctionConfigurations": [{
-        "Id": "visit-someone-lambda",
-        "Events": [ "s3:ObjectCreated:*" ],
-        "LambdaFunctionArn": "arn:aws:lambda:us-west-2:550931752661:function:GetFacesByReko"
-    }]
-}'
+$ aws cloudtrail create-trail \
+    --name visit-someone-trail \
+    --s3-bucket-name 'visit.someone.log' \
+    --no-is-multi-region-trail \
+    --enable-log-file-validation
+
+# output
+    {
+        "IncludeGlobalServiceEvents": true,
+        "Name": "visit-someone-trail",
+        "TrailARN": "arn:aws:cloudtrail:us-west-2:550931752661:trail/visit-someone-trail",
+        "LogFileValidationEnabled": true,
+        "IsMultiRegionTrail": false,
+        "S3BucketName": "visit.someone.log"
+    }
 ```
+
+```
+$ aws cloudtrail put-event-selectors \
+    --trail-name visit-someone-trail \
+    --event-selectors '[{
+        "ReadWriteType": "WriteOnly",
+        "IncludeManagementEvents":true,
+        "DataResources": [{
+            "Type": "AWS::S3::Object",
+            "Values": ["arn:aws:s3:::visit.someone/"] 
+        }]
+    }]'
+
+# output
+{
+    "EventSelectors": [
+        {
+            "IncludeManagementEvents": false,
+            "DataResources": [
+                {
+                    "Values": [
+                        "arn:aws:s3:::visit.someone/"
+                    ],
+                    "Type": "AWS::S3::Object"
+                }
+            ],
+            "ReadWriteType": "WriteOnly"
+        }
+    ],
+    "TrailARN": "arn:aws:cloudtrail:us-west-2:550931752661:trail/visit-someone-trail"
+}
+```
+
+### CloudWatch
+
+
+### Event Rule
+```
+$ aws events put-rule \
+    --name visit-someone-event \
+    --event-pattern '{
+        "source": ["aws.s3"],
+        "detail": {
+            "eventSource": ["s3.amazonaws.com"],
+            "eventName": ["PutObject"],
+            "requestParameters": {
+                "bucketName": ["visit.someone"]
+            }
+        }
+    }'
+
+# output
+{
+    "RuleArn": "arn:aws:events:us-west-2:550931752661:rule/visit-someone-event"
+}
+```
+
+### Event Target
+```
+$ aws events put-targets --rule visit-someone-event \
+    --targets '[{
+        "Id": "visit-some-event",
+        "RoleArn": "arn:aws:iam::550931752661:role/visit-someone-role",
+        "Arn": "arn:aws:states:us-west-2:550931752661:stateMachine:visit-someone"
+    }]'
+    
+# output
+{
+    "FailedEntries": [],
+    "FailedEntryCount": 0
+}
+```
+
+

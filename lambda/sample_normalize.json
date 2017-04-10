@@ -1,0 +1,36 @@
+{
+    "s3":{
+        "region":"us-west-2",
+        "bucket":"visit.someone",
+        "name":"test.jpg"
+    },
+    "created_at":"2017-03-28 22:48:21.784",
+    "faces":[
+        {
+            "Eyeglasses":false,
+            "Gender":"Male",
+            "Age":34,
+            "Emotions":[
+                {
+                    "Confidence":24.25369644165039,
+                    "Type":"CALM"
+                },
+                {
+                    "Confidence":10.527027130126953,
+                    "Type":"CONFUSED"
+                },
+                {
+                    "Confidence":8.463282585144043,
+                    "Type":"HAPPY"
+                }
+            ],
+            "BoundingBox":{
+                "Width":0.39423078298568726,
+                "Top":0.12980769574642181,
+                "Height":0.5256410241127014,
+                "Left":0.19591346383094788
+            },
+            "Smile":94.11669921875
+        }
+    ]
+}

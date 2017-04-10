@@ -16,7 +16,8 @@ def lambda_handler(event, context):
             'Gender': 'Male',
             'Emotions': face['Emotions'],
             'Age': (face['AgeRange']['High'] + face['AgeRange']['Low']) / 2,
-            'Smile': 0
+            'Smile': 0,
+            'BoundingBox': face['BoundingBox']
         }
 
         if (face['Eyeglasses']['Value'] is True and face['Eyeglasses']['Confidence'] > 90):

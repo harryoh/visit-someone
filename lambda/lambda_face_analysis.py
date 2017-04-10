@@ -9,9 +9,9 @@ logger.setLevel(logging.INFO)
 
 
 def lambda_handler(event, context):
-    bucket = event['Records'][0]['s3']['bucket']['name']
-    region = event['Records'][0]['awsRegion']
-    key = urllib.unquote_plus(event['Records'][0]['s3']['object']['key'].encode('utf8'))
+    bucket = event['detail']['requestParameters']['bucketName']
+    region = event['detail']['awsRegion']
+    key = urllib.unquote_plus(event['detail']['requestParameters']['key'].encode('utf8'))
     client = boto3.client('rekognition', region)
 
     response = client.detect_faces(
@@ -27,14 +27,14 @@ def lambda_handler(event, context):
     faces = response['FaceDetails']
 
     if not len(response['FaceDetails']):
-        return False
+        faces = False
 
     return {
         'faces': faces,
         's3': {
             'region': region,
             'bucket': bucket,
-            'name': key
+            'key': key
         },
-        'created_at': str(datetime.now())
+        'created_at': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
     }

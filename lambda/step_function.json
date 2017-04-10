@@ -1,0 +1,25 @@
+{
+    "Comment": "Analysis Faces",
+    "StartAt": "FaceAnalysis",
+    "States": {
+        "FaceAnalysis": {
+            "Type": "Task",
+            "Resource": "arn:aws:lambda:us-west-2:550931752661:function:GetFacesByReko",
+            "Next": "ChoiceState"
+        },
+        "ChoiceState": {
+            "Type": "Choice",
+            "Choices": [{
+                "Variable": "$.faces",
+                "BooleanEquals": false,
+                "End": true
+            }],
+            "Default": "Normalize"
+        },
+        "Normalize": {
+            "Type": "Task",
+            "Resource": "arn:aws:lambda:us-west-2:550931752661:function:NormalizeFaces",
+            "End": true
+        }
+    }
+}
