@@ -13,8 +13,8 @@ def lambda_handler(event, context):
 
         normalized_face = {
             'Eyeglasses': False,
-            'Gender': 'Male',
-            'Emotions': face['Emotions'],
+            'Gender': face['Gender']['Value'],
+            'Emotions': filter(lambda x: x['Confidence'] > 30, face['Emotions']),
             'Age': (face['AgeRange']['High'] + face['AgeRange']['Low']) / 2,
             'Smile': 0,
             'BoundingBox': face['BoundingBox']

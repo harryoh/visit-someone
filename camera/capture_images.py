@@ -13,8 +13,8 @@ import cv2
 import boto3
 from botocore.exceptions import ClientError
 
-IMG_WIDTH=640
-IMG_HEIGHT=480
+IMG_WIDTH = 640
+IMG_HEIGHT = 480
 
 try:
     CONFIG = import_module('config')
@@ -30,6 +30,7 @@ AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID', CONFIG.AWS_ACCESS_KEY_ID)
 AWS_ACCESS_KEY_SECRET = os.getenv('AWS_ACCESS_KEY_SECRET', CONFIG.AWS_ACCESS_KEY_SECRET)
 AWS_BUCKET_NAME = os.getenv('AWS_BUCKET_NAME', CONFIG.AWS_BUCKET_NAME)
 AWS_REGION = os.getenv('AWS_REGION', CONFIG.AWS_REGION)
+CAMERA_NAME = os.getenv('CAMERA_NAME', CONFIG.CAMERA_NAME)
 DISPLAY = os.getenv('DISPLAY', CONFIG.DISPLAY)
 
 
@@ -118,6 +119,19 @@ def get_faces(faceCascade, image):
         return faces
 
 
+def _upload_to_s3(s3, file_path):
+            s3.upload_file(file_path, AWS_BUCKET_NAME,
+                           CAMERA_NAME + '/' + file_path.split('/')[-1],
+                           ExtraArgs={
+                               'ContentType': 'image/jpeg',
+                               'Metadata': {
+                                   'x-amz-meta-width': str(IMG_WIDTH),
+                                   'x-amz-meta-height': str(IMG_HEIGHT)
+                               }
+                           })
+            os.unlink(file_path)
+
+
 def main():
     cam = initial_camera(IMG_WIDTH, IMG_HEIGHT)
     s3 = initial_s3()
@@ -130,7 +144,6 @@ def main():
 
     motion_images = motion_event(cam, cv_images)
     for image in motion_images:
-        buff = io.BytesIO()
         faces = get_faces(faceCascade, image)
 #        for (x, y, w, h) in faces:
 #            cv2.rectangle(image, (x, y), (x+w, y+h), (0, 255, 0), 2)
@@ -141,35 +154,9 @@ def main():
             file_path = os.path.join('/tmp', filename)
             cv2.imwrite(file_path, image)
 
-            print 'Find face({})'.format(len(faces))
+            print '[{}] Find face({})'.format(datetime.now(), len(faces))
 
-            s3.upload_file(file_path, AWS_BUCKET_NAME, filename,
-                           ExtraArgs={
-                               'ContentType': 'image/jpeg',
-                               'Metadata': {
-                                   'x-amz-meta-width': str(IMG_WIDTH),
-                                   'x-amz-meta-height': str(IMG_HEIGHT)
-                               }
-                           })
-            os.unlink(file_path)
-
-            if DISPLAY is True:
-                cv2.imshow('viewer', image)
-                cv2.waitKey(1)
-
-        if False:
-            filename = ('{}.jpg'
-                        .format(datetime.now().strftime("%Y%m%d_%H%M%S")))
-            Image.fromarray(image).save(buff, format='JPEG')
-
-            print 'Find face({})'.format(len(faces))
-
-            s3.put_object(
-                Bucket=AWS_BUCKET_NAME,
-                Key=filename,
-                ContentType='image/jpeg',
-                Body=buff.getvalue())
-
+            _upload_to_s3(s3, file_path)
             if DISPLAY is True:
                 cv2.imshow('viewer', image)
                 cv2.waitKey(1)
