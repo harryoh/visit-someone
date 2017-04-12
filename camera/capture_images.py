@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
 
-import io
 import os
 import sys
 import time
 from collections import deque
 from datetime import datetime, timedelta
 from importlib import import_module
-from PIL import Image
+from multiprocessing import Pool
 
 import cv2
 import boto3
@@ -86,7 +85,7 @@ def get_image(cam):
 
 
 def motion_event(cam, cv_images):
-    event_time = datetime.now() - timedelta(seconds=WAIT_SECONDS)
+    event_time = datetime.now()
     while 1:
         delta = cv2.absdiff(cv_images[0], cv_images[2])
         __, delta_diff = cv2.threshold(delta, 16, 255, 3)
@@ -96,9 +95,8 @@ def motion_event(cam, cv_images):
         delta_diff = cv2.flip(delta_diff, 1)
 
         # Event
-        if ((datetime.now()-event_time).seconds >= WAIT_SECONDS and
-           diff_count >= SENSITIVITY):
-            event_time = datetime.now()
+        if datetime.now() > event_time and diff_count >= SENSITIVITY:
+            event_time = datetime.now() + timedelta(seconds=WAIT_SECONDS)
             image = get_image(cam)
             yield image
 
@@ -120,16 +118,16 @@ def get_faces(faceCascade, image):
 
 
 def _upload_to_s3(s3, file_path):
-            s3.upload_file(file_path, AWS_BUCKET_NAME,
-                           CAMERA_NAME + '/' + file_path.split('/')[-1],
-                           ExtraArgs={
-                               'ContentType': 'image/jpeg',
-                               'Metadata': {
-                                   'x-amz-meta-width': str(IMG_WIDTH),
-                                   'x-amz-meta-height': str(IMG_HEIGHT)
-                               }
-                           })
-            os.unlink(file_path)
+    s3.upload_file(file_path, AWS_BUCKET_NAME,
+                   CAMERA_NAME + '/' + file_path.split('/')[-1],
+                   ExtraArgs={
+                       'ContentType': 'image/jpeg',
+                       'Metadata': {
+                           'x-amz-meta-width': str(IMG_WIDTH),
+                           'x-amz-meta-height': str(IMG_HEIGHT)
+                       }
+                   })
+    os.unlink(file_path)
 
 
 def main():
@@ -137,6 +135,7 @@ def main():
     s3 = initial_s3()
     faceCascade = cv2.CascadeClassifier('haarcascade_frontalface.xml')
     cv_images = deque()
+    pool = Pool(processes=1)
 
     for idx in xrange(0, 3):
         cv_images.append(get_image(cam))
@@ -156,10 +155,12 @@ def main():
 
             print '[{}] Find face({})'.format(datetime.now(), len(faces))
 
-            _upload_to_s3(s3, file_path)
+            pool.apply_async(_upload_to_s3, [s3, file_path])
             if DISPLAY is True:
                 cv2.imshow('viewer', image)
                 cv2.waitKey(1)
+
+        time.sleep(0.1)
 
     cam.release()
     if DISPLAY is True:
