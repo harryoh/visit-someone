@@ -22,8 +22,8 @@ except ImportError as e:
              'Copy config.sample.py to config.py and modify it.'
              .format(str(e)))
 
-SENSITIVITY = 3000
-WAIT_SECONDS = 5
+SENSITIVITY = 2000
+WAIT_SECONDS = 3
 
 AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID', CONFIG.AWS_ACCESS_KEY_ID)
 AWS_ACCESS_KEY_SECRET = os.getenv('AWS_ACCESS_KEY_SECRET', CONFIG.AWS_ACCESS_KEY_SECRET)
