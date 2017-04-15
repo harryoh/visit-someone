@@ -20,9 +20,6 @@ except ImportError as e:
              'Copy config.sample.py to config.py and modify it.'
              .format(str(e)))
 
-SENSITIVITY = 2000
-WAIT_SECONDS = 3
-
 AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID', CONFIG.AWS_ACCESS_KEY_ID)
 AWS_ACCESS_KEY_SECRET = os.getenv('AWS_ACCESS_KEY_SECRET', CONFIG.AWS_ACCESS_KEY_SECRET)
 AWS_BUCKET_NAME = os.getenv('AWS_BUCKET_NAME', CONFIG.AWS_BUCKET_NAME)
@@ -31,6 +28,9 @@ CAMERA_NAME = os.getenv('CAMERA_NAME', CONFIG.CAMERA_NAME)
 DISPLAY = os.getenv('DISPLAY', CONFIG.DISPLAY)
 IMG_WIDTH = os.getenv('IMG_WIDTH', CONFIG.IMG_WIDTH)
 IMG_HEIGHT = os.getenv('IMG_HEIGHT', CONFIG.IMG_HEIGHT)
+SENSITIVITY = os.getenv('SENSITIVITY', CONFIG.SENSITIVITY)
+WAIT_SECONDS = os.getenv('WAIT_SECONDS', CONFIG.WAIT_SECONDS)
+USE_FACEDETECT = os.getenv('USE_FACEDETECT', CONFIG.USE_FACEDETECT)
 
 
 def initial_camera(width, height):
@@ -156,22 +156,25 @@ def main():
 
     motion_images = motion_event(cam, cv_images)
     for image in motion_images:
-        faces = get_faces(faceCascade, image)
-        # for (x, y, w, h) in faces:
-        #     cv2.rectangle(image, (x, y), (x+w, y+h), (0, 255, 0), 2)
-
-        if len(faces):
-            filename = ('{}.jpg'
-                        .format(datetime.now().strftime("%Y%m%d_%H%M%S")))
-            file_path = os.path.join('/tmp', filename)
-            cv2.imwrite(file_path, image)
-
+        if USE_FACEDETECT:
+            faces = get_faces(faceCascade, image)
+            # for (x, y, w, h) in faces:
+            #     cv2.rectangle(image, (x, y), (x+w, y+h), (0, 255, 0), 2)
+            if not len(faces):
+                time.sleep(0.1)
+                continue
             print '[{}] Find face({})'.format(datetime.now(), len(faces))
 
-            queue.put(file_path)
-            if DISPLAY is True:
-                cv2.imshow('viewer', image)
-                cv2.waitKey(1)
+        print 'uploading image to s3...'
+        filename = ('{}.jpg'
+                    .format(datetime.now().strftime("%Y%m%d_%H%M%S")))
+        file_path = os.path.join('/tmp', filename)
+        cv2.imwrite(file_path, image)
+
+        queue.put(file_path)
+        if DISPLAY is True:
+            cv2.imshow('viewer', image)
+            cv2.waitKey(1)
 
         time.sleep(0.1)
 
