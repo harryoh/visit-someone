@@ -121,15 +121,19 @@ def get_faces(faceCascade, image):
 
 def _upload_to_s3(s3, queue):
     file_path = queue.get()
-    s3.upload_file(file_path, AWS_BUCKET_NAME,
-                   CAMERA_NAME + '/' + file_path.split('/')[-1],
-                   ExtraArgs={
-                       'ContentType': 'image/jpeg',
-                       'Metadata': {
-                           'x-amz-meta-width': str(IMG_WIDTH),
-                           'x-amz-meta-height': str(IMG_HEIGHT)
-                       }
-                   })
+    try:
+        s3.upload_file(file_path, AWS_BUCKET_NAME,
+                       CAMERA_NAME + '/' + file_path.split('/')[-1],
+                       ExtraArgs={
+                           'ContentType': 'image/jpeg',
+                           'Metadata': {
+                               'x-amz-meta-width': str(IMG_WIDTH),
+                               'x-amz-meta-height': str(IMG_HEIGHT)
+                           }
+                       })
+    except Exception as e:
+        print str(e)
+
     os.unlink(file_path)
     queue.task_done()
 
