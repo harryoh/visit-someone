@@ -13,8 +13,8 @@ import cv2
 import boto3
 from botocore.exceptions import ClientError
 
-IMG_WIDTH = 640
-IMG_HEIGHT = 480
+IMG_WIDTH = 320
+IMG_HEIGHT = 240
 
 try:
     CONFIG = import_module('config')
