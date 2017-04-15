@@ -6,7 +6,8 @@ import time
 from collections import deque
 from datetime import datetime, timedelta
 from importlib import import_module
-from multiprocessing import Pool
+from threading import Thread
+from Queue import Queue
 
 import cv2
 import boto3
@@ -98,6 +99,7 @@ def motion_event(cam, cv_images):
         if datetime.now() > event_time and diff_count >= SENSITIVITY:
             event_time = datetime.now() + timedelta(seconds=WAIT_SECONDS)
             image = get_image(cam)
+            print 'Catch a motion.'
             yield image
 
         cv_images.rotate()
@@ -117,7 +119,8 @@ def get_faces(faceCascade, image):
         return faces
 
 
-def _upload_to_s3(s3, file_path):
+def _upload_to_s3(s3, queue):
+    file_path = queue.get()
     s3.upload_file(file_path, AWS_BUCKET_NAME,
                    CAMERA_NAME + '/' + file_path.split('/')[-1],
                    ExtraArgs={
@@ -128,6 +131,7 @@ def _upload_to_s3(s3, file_path):
                        }
                    })
     os.unlink(file_path)
+    queue.task_done()
 
 
 def main():
@@ -135,11 +139,14 @@ def main():
     s3 = initial_s3()
     faceCascade = cv2.CascadeClassifier('haarcascade_frontalface.xml')
     cv_images = deque()
-    pool = Pool(processes=1)
+
+    queue = Queue()
+    t = Thread(target=_upload_to_s3, args=(s3, queue))
+    t.start()
 
     for idx in xrange(0, 3):
         cv_images.append(get_image(cam))
-        cv_images[idx] = cv2.resize(cv_images[idx], (640, 480))
+        cv_images[idx] = cv2.resize(cv_images[idx], (IMG_WIDTH, IMG_HEIGHT))
 
     motion_images = motion_event(cam, cv_images)
     for image in motion_images:
@@ -155,10 +162,10 @@ def main():
 
             print '[{}] Find face({})'.format(datetime.now(), len(faces))
 
-            pool.apply_async(_upload_to_s3, [s3, file_path])
+            queue.put(file_path)
             if DISPLAY is True:
                 cv2.imshow('viewer', image)
-                cv2.waitKey(1)
+            cv2.waitKey(1)
 
         time.sleep(0.1)
 
