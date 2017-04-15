@@ -13,9 +13,6 @@ import cv2
 import boto3
 from botocore.exceptions import ClientError
 
-IMG_WIDTH = 320
-IMG_HEIGHT = 240
-
 try:
     CONFIG = import_module('config')
 except ImportError as e:
@@ -32,6 +29,8 @@ AWS_BUCKET_NAME = os.getenv('AWS_BUCKET_NAME', CONFIG.AWS_BUCKET_NAME)
 AWS_REGION = os.getenv('AWS_REGION', CONFIG.AWS_REGION)
 CAMERA_NAME = os.getenv('CAMERA_NAME', CONFIG.CAMERA_NAME)
 DISPLAY = os.getenv('DISPLAY', CONFIG.DISPLAY)
+IMG_WIDTH = os.getenv('IMG_WIDTH', CONFIG.IMG_WIDTH)
+IMG_HEIGHT = os.getenv('IMG_HEIGHT', CONFIG.IMG_HEIGHT)
 
 
 def initial_camera(width, height):
@@ -61,9 +60,9 @@ def initial_s3():
             CreateBucketConfiguration={
                 'LocationConstraint': AWS_REGION
             })
-    except ClientError as e:
-        print str(e)
-        pass
+    except ClientError:
+        # print str(e)
+        print '{} bucket is exist.'.format(AWS_BUCKET_NAME)
 
     if bucket:
         s3.put_bucket_lifecycle_configuration(
@@ -120,22 +119,25 @@ def get_faces(faceCascade, image):
 
 
 def _upload_to_s3(s3, queue):
-    file_path = queue.get()
-    try:
-        s3.upload_file(file_path, AWS_BUCKET_NAME,
-                       CAMERA_NAME + '/' + file_path.split('/')[-1],
-                       ExtraArgs={
-                           'ContentType': 'image/jpeg',
-                           'Metadata': {
-                               'x-amz-meta-width': str(IMG_WIDTH),
-                               'x-amz-meta-height': str(IMG_HEIGHT)
-                           }
-                       })
-    except Exception as e:
-        print str(e)
+    while True:
+        file_path = queue.get()
+        try:
+            s3.upload_file(file_path, AWS_BUCKET_NAME,
+                           CAMERA_NAME + '/' + file_path.split('/')[-1],
+                           ExtraArgs={
+                               'ContentType': 'image/jpeg',
+                               'Metadata': {
+                                   'x-amz-meta-width': str(IMG_WIDTH),
+                                   'x-amz-meta-height': str(IMG_HEIGHT)
+                               }
+                           })
+        except Exception as e:
+            print str(e)
+        finally:
+            os.unlink(file_path)
+            queue.task_done()
 
-    os.unlink(file_path)
-    queue.task_done()
+        time.sleep(0.1)
 
 
 def main():
@@ -155,8 +157,8 @@ def main():
     motion_images = motion_event(cam, cv_images)
     for image in motion_images:
         faces = get_faces(faceCascade, image)
-#        for (x, y, w, h) in faces:
-#            cv2.rectangle(image, (x, y), (x+w, y+h), (0, 255, 0), 2)
+        # for (x, y, w, h) in faces:
+        #     cv2.rectangle(image, (x, y), (x+w, y+h), (0, 255, 0), 2)
 
         if len(faces):
             filename = ('{}.jpg'
@@ -169,11 +171,12 @@ def main():
             queue.put(file_path)
             if DISPLAY is True:
                 cv2.imshow('viewer', image)
-            cv2.waitKey(1)
+                cv2.waitKey(1)
 
         time.sleep(0.1)
 
     cam.release()
+    t.join()
     if DISPLAY is True:
         cv2.destoryAllWindows()
 
