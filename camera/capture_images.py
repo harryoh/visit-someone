@@ -95,7 +95,8 @@ def motion_event(cam, cv_images):
 
         if diff_count >= SENSITIVITY:
             image = get_image(cam)
-            print 'Catch a motion.'
+            sys.stdout.write('.')
+            sys.stdout.flush()
             yield image
 
         cv_images.rotate()
@@ -163,9 +164,9 @@ def main():
                 #     cv2.rectangle(image, (x, y), (x+w, y+h), (0, 255, 0), 2)
                 if not len(faces):
                     continue
+                print
                 print '[{}] Find face({})'.format(datetime.now(), len(faces))
 
-            print 'uploading image to s3...'
             filename = ('{}.jpg'
                         .format(datetime.now().strftime("%Y%m%d_%H%M%S")))
             file_path = os.path.join('/tmp', filename)
