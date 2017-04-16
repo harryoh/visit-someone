@@ -159,16 +159,16 @@ def main():
 #        motion_images = motion_event(cam, cv_images)
 #        for image in motion_images:
         while True:
+            cv_images.rotate()
+            cv_images[0] = get_image(cam)
+            cv_images[0] = cv2.blur(cv_images[0], (8, 8))
+
             delta = cv2.absdiff(cv_images[0], cv_images[2])
             __, delta_diff = cv2.threshold(delta, 16, 255, 3)
             cv2.normalize(delta_diff, delta_diff, 0, 255, cv2.NORM_MINMAX)
             diff_gray = cv2.cvtColor(delta_diff, cv2.COLOR_RGB2GRAY)
             diff_count = cv2.countNonZero(diff_gray)
             delta_diff = cv2.flip(delta_diff, 1)
-
-            cv_images.rotate()
-            cv_images[0] = get_image(cam)
-            cv_images[0] = cv2.blur(cv_images[0], (8, 8))
 
             if diff_count < SENSITIVITY:
                 time.sleep(0.5)
@@ -182,7 +182,7 @@ def main():
                 # for (x, y, w, h) in faces:
                 #     cv2.rectangle(image, (x, y), (x+w, y+h), (0, 255, 0), 2)
                 if not len(faces):
-                    time.sleep(1)
+                    time.sleep(0.5)
                     continue
                 print
                 print '[{}] Find face({})'.format(datetime.now(), len(faces))
