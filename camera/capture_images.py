@@ -177,8 +177,9 @@ def main():
             sys.stdout.write('.')
             sys.stdout.flush()
 
+            image = get_image(cam)
             if USE_FACEDETECT:
-                faces = get_faces(faceCascade, cv_images[0])
+                faces = get_faces(faceCascade, image)
                 # for (x, y, w, h) in faces:
                 #     cv2.rectangle(image, (x, y), (x+w, y+h), (0, 255, 0), 2)
                 if not len(faces):
@@ -190,11 +191,11 @@ def main():
             filename = ('{}.jpg'
                         .format(datetime.now().strftime("%Y%m%d_%H%M%S")))
             file_path = os.path.join('/tmp', filename)
-            cv2.imwrite(file_path, cv_images[0])
+            cv2.imwrite(file_path, image)
 
             queue.put(file_path)
             if DISPLAY is True:
-                cv2.imshow('viewer', cv_images[0])
+                cv2.imshow('viewer', image)
                 cv2.waitKey(1)
 
             time.sleep(WAIT_SECONDS)
