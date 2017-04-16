@@ -4,9 +4,9 @@ import os
 import sys
 import time
 from collections import deque
-from datetime import datetime, timedelta
+from datetime import datetime
 from importlib import import_module
-from threading import Thread
+from threading import Thread, Event
 from Queue import Queue
 
 import cv2
@@ -85,7 +85,6 @@ def get_image(cam):
 
 
 def motion_event(cam, cv_images):
-    event_time = datetime.now()
     while 1:
         delta = cv2.absdiff(cv_images[0], cv_images[2])
         __, delta_diff = cv2.threshold(delta, 16, 255, 3)
@@ -94,9 +93,7 @@ def motion_event(cam, cv_images):
         diff_count = cv2.countNonZero(diff_gray)
         delta_diff = cv2.flip(delta_diff, 1)
 
-        # Event
-        if datetime.now() > event_time and diff_count >= SENSITIVITY:
-            event_time = datetime.now() + timedelta(seconds=WAIT_SECONDS)
+        if diff_count >= SENSITIVITY:
             image = get_image(cam)
             print 'Catch a motion.'
             yield image
@@ -104,6 +101,8 @@ def motion_event(cam, cv_images):
         cv_images.rotate()
         cv_images[0] = get_image(cam)
         cv_images[0] = cv2.blur(cv_images[0], (8, 8))
+
+        time.sleep(0.2)
 
 
 def get_faces(faceCascade, image):
@@ -118,8 +117,8 @@ def get_faces(faceCascade, image):
         return faces
 
 
-def _upload_to_s3(s3, queue):
-    while True:
+def _upload_to_s3(s3, queue, stop_event):
+    while not stop_event.wait(1):
         file_path = queue.get()
         try:
             s3.upload_file(file_path, AWS_BUCKET_NAME,
@@ -137,7 +136,7 @@ def _upload_to_s3(s3, queue):
             os.unlink(file_path)
             queue.task_done()
 
-        time.sleep(0.1)
+        time.sleep(1)
 
 
 def main():
@@ -147,41 +146,46 @@ def main():
     cv_images = deque()
 
     queue = Queue()
-    t = Thread(target=_upload_to_s3, args=(s3, queue))
+    stop_event = Event()
+    t = Thread(target=_upload_to_s3, args=(s3, queue, stop_event))
     t.start()
 
     for idx in xrange(0, 3):
         cv_images.append(get_image(cam))
         cv_images[idx] = cv2.resize(cv_images[idx], (IMG_WIDTH, IMG_HEIGHT))
 
-    motion_images = motion_event(cam, cv_images)
-    for image in motion_images:
-        if USE_FACEDETECT:
-            faces = get_faces(faceCascade, image)
-            # for (x, y, w, h) in faces:
-            #     cv2.rectangle(image, (x, y), (x+w, y+h), (0, 255, 0), 2)
-            if not len(faces):
-                time.sleep(0.1)
-                continue
-            print '[{}] Find face({})'.format(datetime.now(), len(faces))
+    try:
+        motion_images = motion_event(cam, cv_images)
+        for image in motion_images:
+            if USE_FACEDETECT:
+                faces = get_faces(faceCascade, image)
+                # for (x, y, w, h) in faces:
+                #     cv2.rectangle(image, (x, y), (x+w, y+h), (0, 255, 0), 2)
+                if not len(faces):
+                    continue
+                print '[{}] Find face({})'.format(datetime.now(), len(faces))
 
-        print 'uploading image to s3...'
-        filename = ('{}.jpg'
-                    .format(datetime.now().strftime("%Y%m%d_%H%M%S")))
-        file_path = os.path.join('/tmp', filename)
-        cv2.imwrite(file_path, image)
+            print 'uploading image to s3...'
+            filename = ('{}.jpg'
+                        .format(datetime.now().strftime("%Y%m%d_%H%M%S")))
+            file_path = os.path.join('/tmp', filename)
+            cv2.imwrite(file_path, image)
 
-        queue.put(file_path)
-        if DISPLAY is True:
-            cv2.imshow('viewer', image)
-            cv2.waitKey(1)
+            queue.put(file_path)
+            if DISPLAY is True:
+                cv2.imshow('viewer', image)
+                cv2.waitKey(1)
 
-        time.sleep(0.1)
+            time.sleep(WAIT_SECONDS)
+
+    except KeyboardInterrupt:
+        print 'Stopping the process....'
+        stop_event.set()
+        t.join(0)
 
     cam.release()
-    t.join()
     if DISPLAY is True:
-        cv2.destoryAllWindows()
+        cv2.destroyAllWindows()
 
 if __name__ == "__main__":
     main()
