@@ -103,7 +103,7 @@ def motion_event(cam, cv_images):
             sys.stdout.flush()
             yield image
 
-        time.sleep(1)
+        time.sleep(0.2)
 
 
 def get_faces(faceCascade, image):
