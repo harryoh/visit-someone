@@ -837,6 +837,10 @@ $ ES_ENDPOINT='search-visit-someone-it3nww4z465kzd73e6nhixvocy.us-west-2.es.amaz
 
 ```
 $ rm -f face_analysis.zip normalize.zip post_elasticsearch.zip
+# Once
+$ pip install slacker -t packages
+$ pushd packages;zip -r ../post_elasticsearch.zip *;popd
+
 $ zip face_analysis.zip lambda_face_analysis.py
 $ zip normalize.zip lambda_normalize.py
 $ zip post_elasticsearch.zip lambda_post_elasticsearch.py
@@ -912,7 +916,9 @@ $ aws lambda create-function \
     --environment Variables='{
         ES_ENDPOINT=search-visit-someone-it3nww4z465kzd73e6nhixvocy.us-west-2.es.amazonaws.com,
         ES_INDEX=aws-submit,
-        ES_TYPE=faces
+        ES_TYPE=faces,
+        SLACK_TOKEN='xxxxxx',
+        SLACK_CHANNEL='xxx'
     }'
 
 # output

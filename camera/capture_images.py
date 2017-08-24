@@ -161,8 +161,6 @@ def main():
         for image in motion_images:
             if USE_FACEDETECT:
                 faces = get_faces(faceCascade, image)
-                # for (x, y, w, h) in faces:
-                #     cv2.rectangle(image, (x, y), (x+w, y+h), (0, 255, 0), 2)
                 if not len(faces):
                     continue
                 print
@@ -175,7 +173,10 @@ def main():
 
             queue.put(file_path)
             if DISPLAY is True:
-                cv2.imshow('viewer', image)
+                for (x, y, w, h) in faces:
+                    cv2.rectangle(image, (x, y), (x+w, y+h), (0, 255, 0), 2)
+
+                cv2.imshow('face_detection', image)
                 cv2.waitKey(1)
 
             time.sleep(WAIT_SECONDS)
